@@ -5,6 +5,7 @@ require("dotenv").config();
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const jwt = require("jsonwebtoken");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 // this is midlewiere
 app.use(cors());
@@ -43,6 +44,19 @@ async function run() {
     const orderCollection = client.db("glue_gun").collection("orders");
     const userCollection = client.db("glue_gun").collection("user");
 
+    // this is for payment
+    app.post("/create-payment-intent", verifyJWT, async (req, res) => {
+      const order = req.body;
+      const totalCost = order.totalCost;
+      const amount = totalCost * 100;
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      res.send({ clientSecret: paymentIntent.client_secret });
+    });
+
     // finding all tools from database
     app.get("/tools", async (req, res) => {
       const query = {};
@@ -61,10 +75,18 @@ async function run() {
 
     // get all the oder form database using email query
     app.get("/order", async (req, res) => {
-      const user = req.query.user;
-      const query = { user: user };
+      const email = req.query.email;
+      const query = { email: email };
       const orders = await orderCollection.find(query).toArray();
       return res.send(orders);
+    });
+
+    // this is for payment
+    app.get("/order/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const order = await orderCollection.findOne(query);
+      res.send(order);
     });
     // add a new order
     app.post("/order", async (req, res) => {
@@ -90,7 +112,7 @@ async function run() {
     });
 
     // this is for user collection
-    app.put("/user/:email", async (req, res) => {
+    app.post("/user/:email", async (req, res) => {
       const email = req.params.email;
       const user = req.body;
       const filter = { email: email };
@@ -107,7 +129,26 @@ async function run() {
       );
       res.send({ result, token });
     });
+    // this is for user collection
+    app.put("/user/:email", async (req, res) => {
+      const email = req.params.email;
+      const userInfo = req.body;
+      const filter = { email: email };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: userInfo,
+      };
+      const result = await userCollection.updateOne(filter, updateDoc, options);
+      res.send(result);
+    });
 
+    //get all user
+    app.get("/user/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const result = await userCollection.find(query).toArray();
+      res.send(result);
+    });
     // this is for delete order
     app.delete("/order/:orderId", async (req, res) => {
       const orderId = req.params.orderId;
