@@ -45,6 +45,18 @@ async function run() {
     const userCollection = client.db("glue_gun").collection("user");
     const paymentCollection = client.db("glue_gun").collection("payments");
 
+    // this is for admin verify
+    const verifyAdmin = async (req, res, next) => {
+      const requester = req.decoded.email;
+      const requesterAccount = await userCollection.findOne({
+        email: requester,
+      });
+      if (requesterAccount.role === "admin") {
+        next();
+      } else {
+        res.status(403).send({ message: "forbidden" });
+      }
+    };
     // this is for payment
     app.post("/create-payment-intent", verifyJWT, async (req, res) => {
       const service = req.body;
@@ -76,8 +88,9 @@ async function run() {
 
     // get all the oder form database using email query
     app.get("/order", async (req, res) => {
-      const email = req.query.email;
-      const query = { email: email };
+      const email = req.query.user;
+      const query = { user: email };
+      console.log(query);
       const orders = await orderCollection.find(query).toArray();
       return res.send(orders);
     });
@@ -130,6 +143,29 @@ async function run() {
       res.send(updatedOrder);
     });
 
+    //get all user
+    app.get("/user", verifyJWT, async (req, res) => {
+      const users = await userCollection.find().toArray();
+      res.send(users);
+    });
+
+    // limit dashboard access
+    app.get("/admin/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = await userCollection.findOne({ email: email });
+      const isAdmin = user.role === "admin";
+      res.send({ admin: isAdmin });
+    });
+    // this is make admin
+    app.put("/user/admin/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      const filter = { email: email };
+      const updateDoc = {
+        $set: { role: "admin" },
+      };
+      const result = await userCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
     // this is for user collection
     app.post("/user/:email", async (req, res) => {
       const email = req.params.email;
