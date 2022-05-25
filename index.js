@@ -43,11 +43,12 @@ async function run() {
     const toolCollection = client.db("glue_gun").collection("tools");
     const orderCollection = client.db("glue_gun").collection("orders");
     const userCollection = client.db("glue_gun").collection("user");
+    const paymentCollection = client.db("glue_gun").collection("payments");
 
     // this is for payment
     app.post("/create-payment-intent", verifyJWT, async (req, res) => {
-      const order = req.body;
-      const totalCost = order.totalCost;
+      const service = req.body;
+      const totalCost = service.totalCost;
       const amount = totalCost * 100;
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
@@ -109,6 +110,24 @@ async function run() {
       };
       const result = await toolCollection.updateOne(query, updatedDoc, options);
       res.send(result);
+    });
+
+    //this is for updateing transation id on databse
+    app.patch("/order/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      console.log(id);
+      const payment = req.body;
+      const filter = { _id: ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          paid: true,
+          transactionId: payment.transactionId,
+        },
+      };
+      const result = await paymentCollection.insertOne(payment);
+      const updatedOrder = await orderCollection.updateOne(filter, updatedDoc);
+
+      res.send(updatedOrder);
     });
 
     // this is for user collection
