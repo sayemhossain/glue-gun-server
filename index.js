@@ -231,10 +231,17 @@ async function run() {
       res.send(result);
     });
     // this is for delete order
-    app.delete("/order/:orderId", async (req, res) => {
-      const orderId = req.params.orderId;
-      const filter = { orderId: orderId };
+    app.delete("/order/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
       const result = await orderCollection.deleteOne(filter);
+      res.send(result);
+    });
+    //this is for delete tool
+    app.delete("/tools/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const result = await toolCollection.deleteOne(filter);
       res.send(result);
     });
   } finally {
