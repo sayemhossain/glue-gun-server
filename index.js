@@ -44,6 +44,7 @@ async function run() {
     const orderCollection = client.db("glue_gun").collection("orders");
     const userCollection = client.db("glue_gun").collection("user");
     const paymentCollection = client.db("glue_gun").collection("payments");
+    const reviewCollection = client.db("glue_gun").collection("reviews");
 
     // this is for admin verify
     const verifyAdmin = async (req, res, next) => {
@@ -90,9 +91,14 @@ async function run() {
     app.get("/order", async (req, res) => {
       const email = req.query.user;
       const query = { user: email };
-      console.log(query);
       const orders = await orderCollection.find(query).toArray();
       return res.send(orders);
+    });
+    // for all order
+    app.get("/orders", async (req, res) => {
+      const query = {};
+      const result = await orderCollection.find(query).toArray();
+      res.send(result);
     });
 
     // this is for payment
@@ -202,6 +208,20 @@ async function run() {
       const email = req.params.email;
       const query = { email: email };
       const result = await userCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    //get all reviews
+    app.get("/reviews", async (req, res) => {
+      const query = {};
+      const reviews = await reviewCollection.find(query).toArray();
+      const reverseReviews = reviews.reverse();
+      res.send(reverseReviews);
+    });
+    //this is for create reviews
+    app.post("/reviews", verifyJWT, async (req, res) => {
+      const order = req.body;
+      const result = await reviewCollection.insertOne(order);
       res.send(result);
     });
     // this is for delete order
