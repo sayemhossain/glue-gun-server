@@ -79,6 +79,12 @@ async function run() {
       res.send(tools);
     });
 
+    // add a new tool
+    app.post("/tools", async (req, res) => {
+      const tool = req.body;
+      const result = await toolCollection.insertOne(tool);
+      res.send(result);
+    });
     //find one using id from database
     app.get("/tools/:id", async (req, res) => {
       const id = req.params.id;
